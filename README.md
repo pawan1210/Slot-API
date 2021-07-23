@@ -1,6 +1,9 @@
 # SLOT API
 A Rest API which first assigns orders to vehicles optimally and then divide them into slots.
 
+## Hosted Link - 
+https://slot-api.herokuapp.com/
+
 ## 🚧 Technology Stack
 
 - **Framework** - Django Rest Framework ( GenericAPIView is used)
