@@ -1,6 +1,11 @@
 import copy
 
-from .constants import vehicle_capacity, max_optimal_space_wasted, slots
+from .constants import (
+    delivery_partners,
+    max_optimal_space_wasted,
+    slots,
+    error_response,
+)
 
 
 class SlotFinder:
@@ -14,7 +19,9 @@ class SlotFinder:
             space_wasted = 0
             for vehicle in vehicles:
                 if vehicle["current_capacity"] > 0:
-                    space_wasted += vehicle["capacity"] - vehicle["current_capacity"]
+                    space_wasted += (
+                        vehicle["vehicle_capacity"] - vehicle["current_capacity"]
+                    )
 
             if space_wasted < self.optimal_space_wasted:
                 self.optimal_space_wasted = space_wasted
@@ -25,65 +32,66 @@ class SlotFinder:
         for i in range(0, len(vehicles)):
             if (
                 vehicles[i]["current_capacity"] + order_list[index]["order_weight"]
-                <= vehicles[i]["capacity"]
+                <= vehicles[i]["vehicle_capacity"]
             ):
                 vehicles[i]["current_capacity"] += order_list[index]["order_weight"]
-                vehicles[i]["orders_list"].append(order_list[index]["order_id"])
+                vehicles[i]["list_orders_ids_assigned"].append(
+                    order_list[index]["order_id"]
+                )
                 self.assign_orders(order_list, vehicles, index + 1)
                 vehicles[i]["current_capacity"] -= order_list[index]["order_weight"]
-                vehicles[i]["orders_list"].pop()
+                vehicles[i]["list_orders_ids_assigned"].pop()
 
     def find_slot(self, order_list):
-        for capacity in vehicle_capacity:
+        for delivery_partner in delivery_partners:
             self.vehicles.append(
-                {"capacity": capacity, "orders_list": [], "current_capacity": 0}
+                {
+                    "vehicle_capacity": delivery_partner["vehicle_capacity"],
+                    "list_orders_ids_assigned": [],
+                    "current_capacity": 0,
+                    "vehicle_type": delivery_partner["vehicle_type"],
+                    "delivery_partner_id": delivery_partner["id"],
+                }
             )
 
         self.assign_orders(order_list, self.vehicles, 0)
-        self.divide_in_slots()
+        filled_slots = self.divide_in_slots()
+
+        return (
+            filled_slots
+            if self.validate_orders(order_list, filled_slots)
+            else error_response
+        )
 
     def divide_in_slots(self):
-        filled_slots = dict(slots)
-        for vehicle in self.optimal_vehicle_distribution:
-            if (
-                (vehicle["capacity"] == 30 or vehicle["capacity"] == 50)
-                and vehicle["current_capacity"] > 0
-                and filled_slots["6-9"]["total_weight"] + vehicle["current_capacity"]
-                <= 100
-            ):
-                filled_slots["6-9"]["shipments"].append(vehicle)
-                filled_slots["6-9"]["total_weight"] += vehicle["current_capacity"]
-                self.optimal_vehicle_distribution.remove(vehicle)
+        filled_slots = copy.deepcopy(slots)
+        for key in slots:
+            for vehicle in self.optimal_vehicle_distribution:
+                if self.validate_slot(slots, key, vehicle):
+                    filled_slots[key]["shipments"].append(vehicle)
+                    filled_slots[key]["total_weight"] += vehicle["current_capacity"]
+                    self.optimal_vehicle_distribution.remove(vehicle)
+        return filled_slots
 
-        for vehicle in self.optimal_vehicle_distribution:
-            if (
-                filled_slots["9-13"]["total_weight"] + vehicle["current_capacity"]
-                <= 100
-                and vehicle["current_capacity"] > 0
-            ):
-                filled_slots["9-13"]["shipments"].append(vehicle)
-                filled_slots["9-13"]["total_weight"] += vehicle["current_capacity"]
-                self.optimal_vehicle_distribution.remove(vehicle)
+    def validate_slot(self, slots, key, vehicle):
+        if vehicle["current_capacity"] == 0:
+            return False
+        if slots[key]["total_weight"] + vehicle["current_capacity"] > 100:
+            return False
+        if key == "6-9" and (vehicle["vehicle_capacity"] == 100):
+            return False
+        if key == "19-23" and (
+            vehicle["vehicle_capacity"] == 30 or vehicle["vehicle_capacity"] == 50
+        ):
+            return False
+        return True
 
-        for vehicle in self.optimal_vehicle_distribution:
-            if (
-                filled_slots["16-19"]["total_weight"] + vehicle["current_capacity"]
-                <= 100
-                and vehicle["current_capacity"] > 0
-            ):
-                filled_slots["16-19"]["shipments"].append(vehicle)
-                filled_slots["16-19"]["total_weight"] += vehicle["current_capacity"]
-                self.optimal_vehicle_distribution.remove(vehicle)
+    def validate_orders(self, order_list, filled_slots):
+        total_orders_weight = 0
+        total_slots_weight = 0
+        for order in order_list:
+            total_orders_weight += order["order_weight"]
+        for slot in filled_slots:
+            total_slots_weight += filled_slots[slot]["total_weight"]
+        return total_orders_weight == total_slots_weight
 
-        for vehicle in self.optimal_vehicle_distribution:
-            if (
-                (vehicle["capacity"] == 100)
-                and vehicle["current_capacity"] > 0
-                and filled_slots["19-23"]["total_weight"] + vehicle["current_capacity"]
-                <= 100
-            ):
-                filled_slots["19-23"]["shipments"].append(vehicle)
-                filled_slots["19-23"]["total_weight"] += vehicle["current_capacity"]
-                self.optimal_vehicle_distribution.remove(vehicle)
-
-        print(filled_slots)

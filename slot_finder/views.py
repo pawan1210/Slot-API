@@ -16,4 +16,4 @@ class SlotFinderView(generics.GenericAPIView):
 
         slot_finder = SlotFinder()
         response = slot_finder.find_slot(**serializer.data)
-        return Response({})
+        return Response(response)
