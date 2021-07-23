@@ -2,6 +2,7 @@ from rest_framework import generics
 from rest_framework.response import Response
 
 from .serializers import OrderListSerializer
+from .utils import SlotFinder
 
 
 class SlotFinderView(generics.GenericAPIView):
@@ -13,4 +14,6 @@ class SlotFinderView(generics.GenericAPIView):
         if not serializer.is_valid():
             return Response(serializer.errors)
 
-        return Response({"response": "Valid"})
+        slot_finder = SlotFinder()
+        response = slot_finder.find_slot(**serializer.data)
+        return Response({})
