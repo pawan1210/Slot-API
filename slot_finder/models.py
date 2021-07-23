@@ -22,7 +22,7 @@ class DelieveryPartner(models.Model):
     name = models.CharField(max_length=200, unique=True, blank=False)
 
     def __str__(self):
-        return self.delievery_partner_id
+        return self.name
 
 
 class Shipment(models.Model):

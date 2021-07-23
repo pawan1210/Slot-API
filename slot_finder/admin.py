@@ -1,3 +1,6 @@
 from django.contrib import admin
+from .models import DelieveryPartner, Shipment, Vehicle
 
-# Register your models here.
+admin.site.register(DelieveryPartner)
+admin.site.register(Shipment)
+admin.site.register(Vehicle)
